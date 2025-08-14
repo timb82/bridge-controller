@@ -1,0 +1,7 @@
+pico/
+pico-stub/
+modules/
+*.pyc
+secret.py
+secret*.py
+

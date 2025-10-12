@@ -3,9 +3,9 @@ from micropython_rotary_encoder import RotaryEncoderRP2, RotaryEncoderEvent
 import uasyncio as asyncio
 
 # constants
-ENCODER_CLK_PIN = 12
-ENCODER_DT_PIN = 13
-ENCODER_SW_PIN = 15
+ENCODER_CLK_PIN = 11
+ENCODER_DT_PIN = 12
+ENCODER_SW_PIN = 13
 
 
 # Define the pins for the rotary encoder and the button

@@ -5,9 +5,9 @@ from machine import Pin
 import time
 
 # Encoder pin definitions
-SW_PIN = 15
-DT_PIN = 13
-CLK_PIN = 12
+SW_PIN = 13
+DT_PIN = 12
+CLK_PIN = 11
 
 
 class RotaryEncoder:
@@ -22,7 +22,7 @@ class RotaryEncoder:
         callback=None,
         button_callback=None,
         pull=None,
-        debounce_ms=50,
+        debounce_ms=30,
         step_scale=1,
     ):
         self.pin_a = Pin(pin_a, Pin.IN, pull or Pin.PULL_UP)
@@ -38,9 +38,7 @@ class RotaryEncoder:
         self.step_scale = step_scale
         if button_pin is not None:
             self.button_pin = Pin(button_pin, Pin.IN, pull or Pin.PULL_UP)
-            self.button_pin.irq(
-                trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._button_update
-            )
+            self.button_pin.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._button_update)
         # Set up interrupts
         self.pin_a.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._update)
         self.pin_b.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=self._update)
@@ -79,6 +77,7 @@ class RotaryEncoder:
 
 
 if __name__ == "__main__":
+
     def rotary_callback(pos):
         print("Encoder position:", pos)
 

@@ -24,9 +24,10 @@ class Button:
 
 
 class Comm:
-    def __init__(self, btn_pin, led_send_pin, signal_pin, read_pin, freq=31000):
+    def __init__(self, btn_pin, led_send_pin, led_rcv_pin, signal_pin, read_pin, freq=31000):
         self.btn = Button(btn_pin, callback=self._btn_callback)
-        self.led = Pin(led_pin, Pin.OUT)
+        self.led_snd = Pin(led_send_pin, Pin.OUT)
+        self.led_rcv = Pin(led_rcv_pin, Pin.OUT)
         self.freq = freq
         self.signal_out = PWM(Pin(signal_pin, Pin.OUT), freq=self.freq, duty_u16=0)
         self.signal_in = Pin(read_pin, Pin.IN)
@@ -37,18 +38,18 @@ class Comm:
         if state == 0:  # Button pressed
             self.transmitting = True
             print("sending transmission")
-            self.led.toggle()
+            self.led_snd.toggle()
 
             # add one-shot timer to control duration
 
-            # self.led.on()
+            # self.led_send.on()
             # TODO: Set signal_out to PWM, 31kHz 50%
-            # self.led.off()
+            # self.led_send.off()
             self.transmitting = False
 
     def _read_signal(self, pin):
         if not self.transmitting:
             print("transmission received")
-            # blink LED for 3s
+            # blink led_rcv for 3s
 
         # add periodic timer to blink LED

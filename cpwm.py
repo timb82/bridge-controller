@@ -147,7 +147,7 @@ class CompPWM:
 
     def __str__(self):
         """Returns current configuration"""
-        return f"Pin A: {self.pin}, Pin B: {self.pin+1}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
+        return f"Pin A: {self.pin}, Pin B: {self.pin + 1}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
 
 
 # class cpwm:
@@ -176,6 +176,6 @@ class CompPWM:
 #         dutyL = (dutymin << 16) & 0xFFFF0000
 #         mem32[self.PWM_BASE + 12] = dutyL + dutyH
 
-
-pwm = CompPWM(PIN_A, 10_000)
-print(pwm)
+if __name__ == "__main__":
+    pwm = CompPWM(PIN_A, 10_000)
+    print(pwm)

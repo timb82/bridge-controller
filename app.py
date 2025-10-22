@@ -10,7 +10,7 @@ Comm receive with LED_COMM_RCVR indicator (when COMM button is not pressed)
 from micropython import const
 from machine import Pin, PWM
 from cpwm import CompPWM
-from ios import Button, Comm
+from ios import Button, Comm, PowerTransfer
 
 # PIN assignments
 # LEDs
@@ -29,26 +29,9 @@ _COMM_READ = const(27)  # Input from comm receiver # FIXME requires voltage divi
 
 
 # POWER TRANSFER CONTROLS
-led_main_conv = Pin(_LED_MAIN_CONV, Pin.OUT)
-pwm = CompPWM(_G_Q1Q4, freq=20_000, duty=0.5, dt_ns=500)
-
-
-def start_btn_callback(state, pin):
-    if state == 0:  # Button pressed
-        print("Power transfer started")
-        led_main_conv.on()
-        # Turn on PWM for gate drive signals
-
-
-def stop_btn_callback(state, pin):
-    if state == 0:  # Button pressed
-        print("Power transfer stopped")
-        led_main_conv.off()
-        # Turn off PWM for gate drive signals
-
-
-btn_start = Button(_START_BTN, callback=start_btn_callback)
-btn_stop = Button(_STOP_BTN, callback=stop_btn_callback)
+power = PowerTransfer(_G_Q1Q4, _LED_MAIN_CONV, freq=20_000, duty=0.5, dt_ns=500)
+btn_start = Button(_START_BTN, callback=power.start_btn_callback)
+btn_stop = Button(_STOP_BTN, callback=power.stop_btn_callback)
 
 # COMMUNICATION CONTROLS
 comm = Comm(_COMM_BTN, _LED_COMM_TRANS, _LED_COMM_RCVR, _SIG_TRANS, _COMM_READ)

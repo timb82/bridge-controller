@@ -1,5 +1,6 @@
 from machine import Pin, PWM
 from time import ticks_ms, ticks_diff
+from cpwm import CompPWM
 
 
 class Button:
@@ -53,3 +54,36 @@ class Comm:
             # blink led_rcv for 3s
 
         # add periodic timer to blink LED
+
+
+class PowerTransfer:
+    def __init__(self, gate_A_Pin, power_led_pin, freq=20_000, duty=0.5, dt_ns=500):
+        self.active = False
+        self.power_led = Pin(power_led_pin, Pin.OUT)
+        self.pwm = CompPWM(gate_A_Pin, freq=freq, duty=duty, dt_ns=dt_ns)
+
+    def start(self):
+        self.active = True
+        print("Power transfer started")
+        led_main_conv.on()
+        # Turn on PWM for gate drive signals
+
+    def stop(self):
+        self.active = False
+        print("Power transfer stopped")
+        led_main_conv.off()
+        # Turn off PWM for gate drive signals
+
+    def start_btn_callback(self, state, pin):
+        if state == 0 and not self.active:  # Button pressed
+            self.power_led.on()
+            self.active = True
+            print("Power transfer started")
+            # Turn on PWM for gate drive signals
+
+    def stop_btn_callback(self, state, pin):
+        if state == 0 and self.active:  # Button pressed
+            self.power_led.off()
+            self.active = False
+            print("Power transfer stopped")
+            # Turn off PWM for gate drive signals

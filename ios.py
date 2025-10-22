@@ -1,4 +1,4 @@
-from machine import Pin, PWM
+from machine import Pin, PWM, Timer
 from time import ticks_ms, ticks_diff
 from cpwm import CompPWM
 
@@ -31,29 +31,45 @@ class Comm:
         self.led_rcv = Pin(led_rcv_pin, Pin.OUT)
         self.freq = freq
         self.signal_out = PWM(Pin(signal_pin, Pin.OUT), freq=self.freq, duty_u16=0)
-        self.signal_in = Pin(read_pin, Pin.IN)
+        self.signal_in = Pin(read_pin, Pin.IN, pull=Pin.PULL_DOWN)
         self.signal_in.irq(trigger=Pin.IRQ_RISING, handler=self._read_signal)
-        self.transmitting = False
+        self._last_trigger_time = 0
+        self._receiver_timer = None
+        self._transmitter_timer = None
 
     def _btn_callback(self, state, pin):
-        if state == 0:  # Button pressed
-            self.transmitting = True
-            print("sending transmission")
-            self.led_snd.toggle()
+        if state == 0 and self.comm_free():  # Button pressed
+            self._transmitter_timer = Timer()
+            self._transmitter_timer.init(mode=Timer.ONE_SHOT, period=2000, callback=self._stop_transmission)
+            self.led_snd.on()
+            self.signal_out.duty_u16(32768)  # 50% duty cycle
+            print("transmitting...")
 
-            # add one-shot timer to control duration
-
-            # self.led_send.on()
-            # TODO: Set signal_out to PWM, 31kHz 50%
-            # self.led_send.off()
-            self.transmitting = False
+    def _stop_transmission(self, t):
+        self.led_snd.off()
+        self.signal_out.duty_u16(0)
+        self._transmitter_timer.deinit()
+        self._transmitter_timer = None
+        print("transmission complete!")
 
     def _read_signal(self, pin):
-        if not self.transmitting:
+        if self.comm_free():  # Only process if not already transmitting or receiving
+            self._receiver_timer = Timer()
+            self._receiver_timer.init(mode=Timer.ONE_SHOT, period=3000, callback=self._stop_reception)
+            self.led_rcv.on()
             print("transmission received")
-            # blink led_rcv for 3s
 
-        # add periodic timer to blink LED
+    def _stop_reception(self, t):
+        self.led_rcv.off()
+        self._receiver_timer.deinit()
+        self._receiver_timer = None
+        print("reception complete!")
+
+    def comm_free(self):
+        if self._receiver_timer is None and self._transmitter_timer is None:
+            return True
+        else:
+            return False
 
 
 class PowerTransfer:

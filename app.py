@@ -8,7 +8,6 @@ Comm receive with LED_COMM_RCVR indicator (when COMM button is not pressed)
 # TODO: Buttons require debouncing, no pullups
 
 from micropython import const
-from machine import Pin, PWM
 from cpwm import CompPWM
 from ios import Button, Comm, PowerTransfer
 

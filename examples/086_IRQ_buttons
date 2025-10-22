@@ -1,0 +1,18 @@
+from machine import Pin, PWM
+from time import tick_ms
+
+LED_MAIN_CONV = 2
+LED_COMM_TRANS = 3
+LED_COMM_RCVR = 4
+
+START_BTN = 22  # Power transmission start button
+STOP_BTN = 21  # Power transmission stop button
+COMM_BTN = 26  # Comm send button
+
+
+# but_up = Pin(START_BTN, Pin.IN, Pin.PULL_UP)
+# but_down = Pin(STOP_BTN, Pin.IN, Pin.PULL_UP)
+
+# led0 = Pin(LED_MAIN_CONV, Pin.OUT)
+# led1 = Pin(LED_COMM_TRANS, Pin.OUT)
+# led2 = Pin(LED_COMM_RCVR, Pin.OUT)

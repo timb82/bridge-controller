@@ -11,5 +11,9 @@
     ],
     "python.analysis.extraPaths": [
         "~/.micropico-stubs/included"
+    ],
+    "cSpell.words": [
+        "clkdiv",
+        "deinint"
     ]
 }

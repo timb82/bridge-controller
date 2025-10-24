@@ -6,7 +6,7 @@ from math import ceil
 # slice mapping 4.5.2 in datasheet
 PWM_BASE = 0x40050000  # Base address of PWM peripheral
 PWM_CHAN_OFFSET = 0x14  # Offset between slices (each slice = 20 bytes = 0x14)
-PIN_A = 16
+PIN_A = 8  # Example pin for testing, PIN_B = PIN_A + 1
 
 
 class CompPWM:
@@ -29,7 +29,7 @@ class CompPWM:
         self._slice_base = PWM_BASE + self._slice_num * PWM_CHAN_OFFSET
         # PREINIT for setters
         self._running = False
-        self._pin = None
+        self._pin_no = [None, None]
         self._freq = None
         self._duty = None
         self._dt_ticks = 63  # dead time in ticks
@@ -72,16 +72,17 @@ class CompPWM:
 
         Pin number must be even and between 0 and 28
         Pin change is not implemented"""
-        return self._pin
+        return self._pin_no
 
     @pin.setter
     def pin(self, value):
-        if self._pin is None:
-            if value < 0 or value > 28 or (value % 2) != 0:
-                raise ValueError("Pin_A number must be even and between 0 and 28")
-            self._pin = value
-            self.pwmA = PWM(Pin(self._pin))
-            self.pwmB = PWM(Pin(self._pin + 1))
+        if self._pin_no[0] is None:
+            if type(value) is int or 0 < value < 29 or (value % 2) == 0:
+                self._pin_no = [value, value + 1]
+                self.pwmA = PWM(Pin(self._pin_no[0]))
+                self.pwmB = PWM(Pin(self._pin_no[1]))
+            else:
+                raise ValueError(f"Pin_A:{value} number must be even number between 0 and 28")
         else:
             raise NotImplementedError("Pin change not implemented")
 
@@ -90,7 +91,10 @@ class CompPWM:
         """Frequency in Hz
         Note: freq is doubled internally for center-aligned mode
         after setting freq, reapply duty and dead time to update registers in case clkdiv or top changed"""
-        return int(self._freq / 2)
+        if self._freq is None:
+            return None
+        else:
+            return int(self._freq / 2)
 
     @freq.setter
     def freq(self, freq_hz):
@@ -147,35 +151,16 @@ class CompPWM:
 
     def __str__(self):
         """Returns current configuration"""
-        return f"Pin A: {self.pin}, Pin B: {self.pin + 1}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
+        return f"Pin A: {self.pin[0]}, Pin B: {self.pin[1]}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
 
-
-# class cpwm:
-#     def __init__(self, pinA, freq):
-#         # rely on micropython for initial config
-#         pwm_pin = PWM(Pin(pinA))
-#         pwm_pin.freq(freq * 2)  # double freq for center aligned mode (datasheet 4.5.2.1)
-#         pwm_pin.duty_u16(0)
-#         pwm_pin = PWM(Pin(pinA + 1))
-#         pwm_pin.duty_u16(0)
-#         pwm_pin.freq(freq * 2)  # double freq for center aligned mode
-#         # slice mapping 4.5.2 in datasheet
-#         slice_num = (pinA >> 1) if pinA < 16 else ((pinA - 16) >> 1)
-
-#         # reg addr section 4.5.3 in datasheet
-#         self.PWM_BASE = 0x40050000 + 20 * slice_num  # CHx_CSR address
-#         self.top = mem32[self.PWM_BASE + 16] + 1  # period top
-#         # Modify CSR: Enable phase-correct (center-aligned) mode, invert B output
-#         mem32[self.PWM_BASE] = mem32[self.PWM_BASE] | 10
-
-#     def duty(self, duty_pc, dt_ticks=0):
-#         dt_ticks = max(dt_ticks, 0)  # ensure non-zero
-#         duty = int(duty_pc * self.top)
-#         dutyH = duty & 0xFFFF
-#         dutymin = min(duty + dt_ticks, self.top)
-#         dutyL = (dutymin << 16) & 0xFFFF0000
-#         mem32[self.PWM_BASE + 12] = dutyL + dutyH
 
 if __name__ == "__main__":
-    pwm = CompPWM(PIN_A, 10_000)
-    print(pwm)
+    try:
+        pwm = CompPWM(PIN_A, 10_000, duty=0.75)
+        pwm.start()
+        print(pwm)
+        while True:
+            pass
+    except KeyboardInterrupt:
+        pwm.stop()
+        print("Stopped by user")

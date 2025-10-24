@@ -5,10 +5,9 @@ Start/Stop for power transfer with LED_MAIN_CONV indicator
 Comm send with button and LED_COMM_TRANS indicator (when COMM button is pressed)
 Comm receive with LED_COMM_RCVR indicator (when COMM button is not pressed)
 """
-# TODO: Buttons require debouncing, no pullups
+# TODO: Buttons require debouncing, no pull-ups
 
 from micropython import const
-from cpwm import CompPWM
 from ios import Button, Comm, PowerTransfer
 
 # PIN assignments

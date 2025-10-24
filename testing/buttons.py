@@ -1,4 +1,3 @@
-from micropython import const
 from machine import Pin
 from time import ticks_ms, ticks_diff
 

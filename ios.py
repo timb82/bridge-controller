@@ -83,12 +83,14 @@ class PowerTransfer:
     def start(self):
         self.active = True
         # Turn on PWM for gate drive signals
+        self.dual_pwm.start()
         self.power_led.on()
         print("Power transfer started")
 
     def stop(self):
         self.active = False
         # Turn off PWM for gate drive signals
+        self.dual_pwm.stop()
         self.power_led.off()
         print("Power transfer stopped")
 
@@ -99,3 +101,17 @@ class PowerTransfer:
     def stop_btn_callback(self, state, pin):
         if state == 0 and self.active:  # Button pressed
             self.stop()
+
+
+if __name__ == "__main__":
+    from time import sleep
+
+    try:
+        gate_A = 8
+        power_led = 2
+        pwr = PowerTransfer(gate_A_Pin=gate_A, power_led_pin=power_led, freq=10_000, dt_ns=5000, duty=0.66)
+        pwr.start()
+        sleep(3)
+        pwr.stop()
+    except KeyboardInterrupt:
+        pwr.stop()

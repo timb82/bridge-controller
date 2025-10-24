@@ -25,41 +25,46 @@ class CompPWM:
     def __init__(self, pin_base, freq=10_000, duty=0.5, dt_ns=500):
         self._running = False
         self._pin_base = pin_base
-        # PRE-INIT properties
+        self._duty = min(max(duty, 0.0), 1.0)
+        self._freq = 2 * freq
+        self._dt_ns = dt_ns
 
         if type(self._pin_base) is int or 0 < self._pin_base < 29 or (self._pin_base % 2) == 0:
             self._slice_num = (pin_base >> 1) if pin_base < 16 else ((pin_base - 16) >> 1)
             self._slice_base = PWM_BASE + self._slice_num * PWM_CHAN_OFFSET
             self._pinA = Pin(pin_base, Pin.OUT)
             self._pinB = Pin(pin_base + 1, Pin.OUT)
-            self._duty = min(max(duty, 0.0), 1.0)
             self.pwmA = PWM(self._pinA)
+            # self.pwmA.duty_u16(0)
             self.pwmB = PWM(self._pinB)
-            self.top = mem32[self._slice_base + 16] + 1  # period top register
-            mem32[self._slice_base] = mem32[self._slice_base] & ~1  # disable PWM
-            mem32[self._slice_base] = mem32[self._slice_base] | 10  # invert output B, center-aligned
-            self.dt_ns = dt_ns  # dead time in ns
-            self.freq = freq  # requires deadtime to be set first
-            self.duty = self._duty  # duty cycle as fraction (0.0-1.0)
+            # self.pwmB.duty_u16(0)
+            # self.top = mem32[self._slice_base + 16] + 1  # period top register
+            # self.pwm_setup()
         else:
             raise ValueError(f"pin_base:{self._pin_base} number must be even number between 0 and 28")
 
+    def pwm_setup(self):
+        mem32[self._slice_base] = mem32[self._slice_base] | 10  # invert output B, center-aligned
+        self.dt_ns = self._dt_ns  # dead time in ns
+        self.freq = self._freq  # PWM frequency
+        mem32[self._slice_base] = mem32[self._slice_base] | 10  # invert output B, center-aligned
+        self.duty = self._duty  # duty cycle as fraction (0.0-1.0)
+
     def start(self):
+        self.pwm_setup()
         mem32[self._slice_base] = mem32[self._slice_base] | 1  # enable PWM
         self._running = True
 
     def stop(self):
         mem32[self._slice_base] = mem32[self._slice_base] & ~1  # disable PWM
-        self._running = False
-        # All pins off!!!
+        # All PWM pins off!!!
         self.pwmA.duty_u16(0)
         self.pwmB.duty_u16(0)
+        self._running = False
 
     def id(self, pin):
+        """retun GPIO number of pin"""
         return int(str(pin)[4:-1].split(",")[0][4:])  # extract GPIO number from Pin
-
-    def init_pwm(self):
-        """Initialize PWM on both pins"""
 
     @property
     def running(self):
@@ -134,6 +139,7 @@ class CompPWM:
         dutymin = min(duty_ticks + dt_ticks, self._top)
         dutyL = (dutymin << 16) & 0xFFFF0000
         mem32[self._slice_base + 0x0C] = dutyL + dutyH
+        reg_CTR = mem32[self._slice_base + 0x08]
 
     def __str__(self):
         """Returns current configuration"""

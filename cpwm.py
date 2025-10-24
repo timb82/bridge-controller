@@ -1,12 +1,10 @@
 # https://tahmidmc.blogspot.com/2024/07/generating-complementary-pwm-with.html
 from machine import Pin, PWM, mem32, freq
-from time import sleep, ticks_ms
 from math import ceil
 
 # slice mapping 4.5.2 in datasheet
 PWM_BASE = 0x40050000  # Base address of PWM peripheral
 PWM_CHAN_OFFSET = 0x14  # Offset between slices (each slice = 20 bytes = 0x14)
-PIN_A = 8  # Example pin for testing, PIN_B = PIN_A + 1
 
 
 class CompPWM:
@@ -19,32 +17,32 @@ class CompPWM:
     """
 
     # TODO test pwm.deinint
-    # TODO test changing freq on the fly
+    # TODO add changing freq on the fly
     # TODO test changing duty on the fly
-    # TODO test changing deadtime on the fly
+    # TODO test changing dead time on the fly
     # TODO add error checks for pin, freq, duty, dt
     # TODO implement pin change
-    def __init__(self, pinA, freq=10_000, duty=0.5, dt_ns=500):
-        self._slice_num = (pinA >> 1) if pinA < 16 else ((pinA - 16) >> 1)
-        self._slice_base = PWM_BASE + self._slice_num * PWM_CHAN_OFFSET
-        # PREINIT for setters
+    def __init__(self, pin_base, freq=10_000, duty=0.5, dt_ns=500):
         self._running = False
-        self._pin_no = [None, None]
-        self._freq = None
-        self._duty = None
-        self._dt_ticks = 63  # dead time in ticks
-        self._dt_ns = 504  # for default f_sys=125MHz and clkdiv=1.0
-        # STORE ARGS
-        self.pin = pinA
-        self.freq = freq
-        self.dt_ns = dt_ns  # dead time in ns
-        self.duty = duty
+        self._pin_base = pin_base
+        # PRE-INIT properties
 
-        # INIT PWM
-
-        self.top = mem32[self._slice_base + 16] + 1  # period top
-        mem32[self._slice_base] = mem32[self._slice_base] | 10  # invert output B, center-aligned
-        # self.start()
+        if type(self._pin_base) is int or 0 < self._pin_base < 29 or (self._pin_base % 2) == 0:
+            self._slice_num = (pin_base >> 1) if pin_base < 16 else ((pin_base - 16) >> 1)
+            self._slice_base = PWM_BASE + self._slice_num * PWM_CHAN_OFFSET
+            self._pinA = Pin(pin_base, Pin.OUT)
+            self._pinB = Pin(pin_base + 1, Pin.OUT)
+            self._duty = min(max(duty, 0.0), 1.0)
+            self.pwmA = PWM(self._pinA)
+            self.pwmB = PWM(self._pinB)
+            self.top = mem32[self._slice_base + 16] + 1  # period top register
+            mem32[self._slice_base] = mem32[self._slice_base] & ~1  # disable PWM
+            mem32[self._slice_base] = mem32[self._slice_base] | 10  # invert output B, center-aligned
+            self.dt_ns = dt_ns  # dead time in ns
+            self.freq = freq  # requires deadtime to be set first
+            self.duty = self._duty  # duty cycle as fraction (0.0-1.0)
+        else:
+            raise ValueError(f"pin_base:{self._pin_base} number must be even number between 0 and 28")
 
     def start(self):
         mem32[self._slice_base] = mem32[self._slice_base] | 1  # enable PWM
@@ -53,6 +51,15 @@ class CompPWM:
     def stop(self):
         mem32[self._slice_base] = mem32[self._slice_base] & ~1  # disable PWM
         self._running = False
+        # All pins off!!!
+        self.pwmA.duty_u16(0)
+        self.pwmB.duty_u16(0)
+
+    def id(self, pin):
+        return int(str(pin)[4:-1].split(",")[0][4:])  # extract GPIO number from Pin
+
+    def init_pwm(self):
+        """Initialize PWM on both pins"""
 
     @property
     def running(self):
@@ -65,26 +72,6 @@ class CompPWM:
             self.start()
         elif not value and self._running:
             self.stop()
-
-    @property
-    def pin(self):
-        """set up Pin A and Pin A+1 for complementary PWM
-
-        Pin number must be even and between 0 and 28
-        Pin change is not implemented"""
-        return self._pin_no
-
-    @pin.setter
-    def pin(self, value):
-        if self._pin_no[0] is None:
-            if type(value) is int or 0 < value < 29 or (value % 2) == 0:
-                self._pin_no = [value, value + 1]
-                self.pwmA = PWM(Pin(self._pin_no[0]))
-                self.pwmB = PWM(Pin(self._pin_no[1]))
-            else:
-                raise ValueError(f"Pin_A:{value} number must be even number between 0 and 28")
-        else:
-            raise NotImplementedError("Pin change not implemented")
 
     @property
     def freq(self):
@@ -109,7 +96,7 @@ class CompPWM:
         self.dt_ns = self.dt_ns  # reapply dead time (updates ticks for new clkdiv)
         # TODO check if i need to reapply duty here
         if self.duty is not None:
-            self.duty = self.duty  # reapply duty (updates compare regs for new top)
+            self.duty = self.duty  # reapply duty (updates compare registers for new top)
 
         if running:
             self.start()
@@ -135,14 +122,13 @@ class CompPWM:
     def duty(self):
         """Duty cycle as a fraction (0.0 to 1.0)
         Duty cycle is applied to output A, output B is complementary with dead time.
-        PWM runs in center-aligned mode, therefore deadtime is added to both edges of the B pulse."""
+        PWM runs in center-aligned mode, therefore dead time is added to both edges of the B pulse."""
         return self._duty
 
     @duty.setter
     def duty(self, duty):
         self._duty = min(max(duty, 0.0), 1.0)  # clamp to 0.0-1.0
-        # top = mem32[self._slice_base + 0x10] + 1
-        dt_ticks = max(self._dt_ticks, 0)  # ensure non-zero
+        dt_ticks = max(self._dt_ticks, 1)  # ensure non-zero dead time
         duty_ticks = int(self._duty * self._top)
         dutyH = duty_ticks & 0xFFFF
         dutymin = min(duty_ticks + dt_ticks, self._top)
@@ -151,16 +137,25 @@ class CompPWM:
 
     def __str__(self):
         """Returns current configuration"""
-        return f"Pin A: {self.pin[0]}, Pin B: {self.pin[1]}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
+        return f"Pin A: {self.id(self._pinA)}, Pin B: {self.id(self._pinB)}, Freq: {self.freq}Hz, Duty: {self.duty:.4f}, Dead time: {self.dt_ns:.1f}ns ({self._dt_ticks} ticks), Running: {self.running}"
 
 
 if __name__ == "__main__":
+    from time import sleep
+
+    PIN_A = 8  # Example pin for testing, PIN_B = PIN_A + 1
     try:
-        pwm = CompPWM(PIN_A, 10_000, duty=0.75)
+        # print("Initialize PWM...")
+        pwm = CompPWM(PIN_A, 10_000, duty=0.66, dt_ns=5000)
+        # print(pwm)
+        # print("PWM on standby...")
+        # sleep_us(30)
         pwm.start()
-        print(pwm)
+        print("PWM running")
         while True:
             pass
+            sleep(2)
+            raise KeyboardInterrupt
     except KeyboardInterrupt:
         pwm.stop()
         print("Stopped by user")

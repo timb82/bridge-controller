@@ -35,11 +35,7 @@ class CompPWM:
             self._pinA = Pin(pin_base, Pin.OUT)
             self._pinB = Pin(pin_base + 1, Pin.OUT)
             self.pwmA = PWM(self._pinA)
-            # self.pwmA.duty_u16(0)
             self.pwmB = PWM(self._pinB)
-            # self.pwmB.duty_u16(0)
-            # self.top = mem32[self._slice_base + 16] + 1  # period top register
-            # self.pwm_setup()
         else:
             raise ValueError(f"pin_base:{self._pin_base} number must be even number between 0 and 28")
 

@@ -85,18 +85,15 @@ class cpwm:
 
 # PWM on GP8, GP9
 pwm = cpwm(8, 10_000)
-
 # # 8 ns per tick for deadtime
 # # 63 ticks = 504 ns
 pwm.duty(0.5, 800)
+pwm.status("PWM running...")
 
 
 sleep(3)
+pwm.status("PWM running...")
 pwm.off()
 pwm.pwm_pin.duty_u16(0)
 pwm.pwm_pin2.duty_u16(0)
-# try:
-#     while True:
-#         pass
-# except KeyboardInterrupt:
-#     pwm.duty(0, 0)
+print("PWM off")
